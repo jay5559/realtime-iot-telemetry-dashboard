@@ -1,0 +1,74 @@
+<header class="topbar">
+  <div>
+    <h1>Plant Telemetry Dashboard</h1>
+    <p class="sub">Real-time Industrial IoT monitoring · Angular · Node.js/TypeScript · PostgreSQL</p>
+  </div>
+  <div class="pills">
+    <span class="pill" [class.live]="svc.connected()">
+      <span class="dot"></span>{{ svc.connected() ? 'Live' : 'Offline' }}
+    </span>
+    <span class="pill crit">{{ svc.criticalCount() }} critical</span>
+    <span class="pill warn">{{ svc.warningCount() }} warning</span>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="devices" aria-label="Devices">
+    @for (d of svc.devices(); track d.deviceId) {
+      <button type="button" class="card" [class.active]="selected()?.deviceId === d.deviceId"
+              (click)="select(d.deviceId)">
+        <div class="card-head">
+          <strong>{{ d.deviceId }}</strong>
+          <span class="badge" [class]="d.status">{{ d.status }}</span>
+        </div>
+        <span class="line-name">{{ d.line }}</span>
+        <dl>
+          <div><dt>Temp</dt><dd>{{ d.latest.temperatureC | number: '1.1-1' }} °C</dd></div>
+          <div><dt>Vib</dt><dd>{{ d.latest.vibrationMmS | number: '1.1-1' }} mm/s</dd></div>
+          <div><dt>Press</dt><dd>{{ d.latest.pressureBar | number: '1.1-1' }} bar</dd></div>
+          <div><dt>Speed</dt><dd>{{ d.latest.rpm | number }} rpm</dd></div>
+        </dl>
+      </button>
+    } @empty {
+      <p class="empty">Waiting for telemetry… is the backend running on port 3000?</p>
+    }
+  </section>
+
+  <section class="panel" aria-label="Trend">
+    @if (selected(); as dev) {
+      <div class="panel-head">
+        <h2>{{ dev.deviceId }} · {{ metricMeta().label }} ({{ metricMeta().unit }})</h2>
+        <div class="tabs" role="tablist">
+          @for (m of metrics; track m.key) {
+            <button type="button" role="tab" [class.on]="metric() === m.key"
+                    [attr.aria-selected]="metric() === m.key" (click)="setMetric(m.key)">
+              {{ m.label }}
+            </button>
+          }
+        </div>
+      </div>
+      <app-line-chart [values]="chartValues()" [label]="dev.deviceId + ' ' + metricMeta().label + ' trend'" />
+    }
+  </section>
+
+  <section class="panel alerts" aria-label="Alerts">
+    <h2>Recent alerts</h2>
+    <table>
+      <thead>
+        <tr><th>Time</th><th>Device</th><th>Severity</th><th>Details</th></tr>
+      </thead>
+      <tbody>
+        @for (a of svc.alerts(); track a.id) {
+          <tr>
+            <td>{{ a.timestamp | date: 'HH:mm:ss' }}</td>
+            <td>{{ a.deviceId }}</td>
+            <td><span class="badge" [class]="a.severity">{{ a.severity }}</span></td>
+            <td>{{ a.message }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="4" class="empty">No alerts yet — all systems normal.</td></tr>
+        }
+      </tbody>
+    </table>
+  </section>
+</main>
